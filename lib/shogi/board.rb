@@ -136,6 +136,15 @@ module Shogi
       $stdout.puts __send__("to_#{format}")
     end
 
+    def movable_by_csa?(csa)
+      begin
+        move_by_csa(csa, :noop)
+      rescue Error
+        return false
+      end
+      true
+    end
+    
     private
     def default_position
       [["-KY", "-KE", "-GI", "-KI", "-OU", "-KI", "-GI", "-KE", "-KY"],
@@ -149,7 +158,7 @@ module Shogi
        ["+KY", "+KE", "+GI", "+KI", "+OU", "+KI", "+GI", "+KE", "+KY"]]
     end
 
-    def move_by_csa(csa)
+    def move_by_csa(csa, mode=nil)
       unless /\A[+-](00|[1-9]{2})[1-9]{2}[A-Z]{2}\z/ =~ csa
         raise FormatError, "Wrong CSA format: #{csa}"
       end
@@ -224,12 +233,12 @@ module Shogi
       unless after_cell == ""
         after_piece = Piece.const_get(after_cell[1..2]).new
         if after_piece.class.const_defined?(:CHILD)
-          @captured << "#{csa[0]}#{after_piece.class::CHILD}"
+          @captured << "#{csa[0]}#{after_piece.class::CHILD}" if mode != :noop
         else
-          @captured << "#{csa[0]}#{after_cell[1..2]}"
+          @captured << "#{csa[0]}#{after_cell[1..2]}" if mode != :noop
         end
       end
-      @position[after_y][after_x] = "#{csa[0]}#{csa[5..6]}"
+      @position[after_y][after_x] = "#{csa[0]}#{csa[5..6]}" if mode != :noop
 
       if csa[1..2] == "00"
         used = nil
@@ -245,7 +254,7 @@ module Shogi
           raise CodingError, "[Bug] missing piece in captured"
         end
       else
-        @position[before_y][before_x] = ""
+        @position[before_y][before_x] = "" if mode != :noop
       end
 
       self
