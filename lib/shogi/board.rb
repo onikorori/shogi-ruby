@@ -189,7 +189,7 @@ module Shogi
         unless csa[5..6] == before_cell[1..2]
           after_piece = Piece.const_get(csa[5..6]).new
           unless before_piece.promoter == after_piece.class
-          raise MoveError, "Don't promote: #{before_cell[1..2]} -> #{csa[5..6]}"
+            raise MoveError, "Don't promote: #{before_cell[1..2]} -> #{csa[5..6]}"
           end
 
           after_y = to_array_y_from_shogi_y(csa[4].to_i)
@@ -227,6 +227,13 @@ module Shogi
 
         unless before_piece.move?(movement_x, movement_y)
           raise_movement_error("Invalid movement: #{csa}")
+        end
+
+        # 香,角,飛,馬,竜は移動途中に駒が存在しないか確認する
+        case csa[5..6]
+        when 'KY', 'KA', 'HI', 'UM', 'RY'
+          inter_pieces = extract_pieces(before_x, before_y, after_x, after_y)
+          raise MoveError, 'Exist piece on moving path' unless inter_pieces[1..-2].all? { |v| v.empty? }
         end
       end
 
@@ -280,6 +287,20 @@ module Shogi
 
     def to_shogi_y_from_array_y(array_y)
       array_y + 1
+    end
+
+    def extract_pieces(x0, y0, x1, y1)
+      xs = x0 < x1 ? (x0..x1).to_a : (x1..x0).to_a.reverse
+      ys = y0 < y1 ? (y0..y1).to_a : (y1..y0).to_a.reverse
+      if xs.size > 1 and ys.size > 1
+        ys.each_with_index.map { |y, i| @position[y][xs[i]] }
+      elsif xs.size == 1 and ys.size > 1
+        ys.each_with_index.map { |y, i| @position[y][xs[0]] }
+      elsif xs.size > 1 and ys.size == 1
+        xs.each_with_index.map { |x, i| @position[ys[0]][x] }
+      else
+        raise 'movement error'
+      end
     end
   end
 end
